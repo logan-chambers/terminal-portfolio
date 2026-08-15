@@ -1,0 +1,514 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<title>guest@portfolio: ~</title>
+<style>
+  @import url('https://fonts.googleapis.com/css2?family=JetBrains+Mono:wght@400;500;700&display=swap');
+
+  :root {
+    --bg: #0a0e14;
+    --bg-glow: #0d1420;
+    --cyan: #4dd8e8;
+    --cyan-bright: #8ff2ff;
+    --cyan-dim: #2a7580;
+    --magenta: #e84dc4;
+    --text: #c9f5fb;
+    --text-dim: #5f7a80;
+    --error: #ff5c5c;
+  }
+
+  * { box-sizing: border-box; }
+
+  html, body {
+    margin: 0;
+    padding: 0;
+    background: var(--bg);
+    height: 100%;
+    overflow: hidden;
+  }
+
+  #crt {
+    position: fixed;
+    inset: 0;
+    background: radial-gradient(ellipse at center, var(--bg-glow) 0%, var(--bg) 100%);
+    padding: 28px;
+    font-family: 'JetBrains Mono', monospace;
+  }
+
+  #crt::before {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    background: repeating-linear-gradient(
+      to bottom,
+      rgba(255,255,255,0.025) 0px,
+      rgba(255,255,255,0.025) 1px,
+      transparent 1px,
+      transparent 3px
+    );
+    z-index: 5;
+  }
+
+  #crt::after {
+    content: "";
+    position: fixed;
+    inset: 0;
+    pointer-events: none;
+    box-shadow: inset 0 0 160px rgba(0,0,0,0.75);
+    z-index: 6;
+    animation: flicker 6s infinite;
+  }
+
+  @keyframes flicker {
+    0%, 96%, 100% { opacity: 1; }
+    97% { opacity: 0.94; }
+    98% { opacity: 1; }
+  }
+
+  #term-window {
+    max-width: 900px;
+    height: 100%;
+    margin: 0 auto;
+    display: flex;
+    flex-direction: column;
+    border: 1px solid var(--cyan-dim);
+    border-radius: 8px;
+    background: rgba(10, 14, 20, 0.85);
+    box-shadow: 0 0 40px rgba(77, 216, 232, 0.08), 0 0 2px rgba(77,216,232,0.4);
+    overflow: hidden;
+  }
+
+  #titlebar {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 10px 14px;
+    background: #0d1420;
+    border-bottom: 1px solid var(--cyan-dim);
+    flex-shrink: 0;
+  }
+  .dot { width: 11px; height: 11px; border-radius: 50%; opacity: 0.6; }
+  .dot.r { background: #ff5c5c; }
+  .dot.y { background: #f5d76e; }
+  .dot.g { background: #5ce87a; }
+  #titlebar span {
+    margin-left: 10px;
+    color: var(--text-dim);
+    font-size: 12px;
+    letter-spacing: 0.5px;
+  }
+
+  #screen {
+    flex: 1;
+    overflow-y: auto;
+    padding: 18px 20px 10px;
+    color: var(--text);
+    font-size: 14px;
+    line-height: 1.55;
+    text-shadow: 0 0 6px rgba(77, 216, 232, 0.25);
+  }
+
+  #screen::-webkit-scrollbar { width: 8px; }
+  #screen::-webkit-scrollbar-thumb { background: var(--cyan-dim); border-radius: 4px; }
+  #screen::-webkit-scrollbar-track { background: transparent; }
+
+  .ascii {
+    color: var(--cyan-bright);
+    white-space: pre;
+    font-size: 11px;
+    line-height: 1.15;
+    margin: 4px 0 14px;
+  }
+
+  .line { white-space: pre-wrap; word-break: break-word; margin: 2px 0; }
+  .prompt-line { display: flex; gap: 8px; flex-wrap: wrap; }
+  .prompt-tag { color: var(--magenta); flex-shrink: 0; }
+  .cmd-echo { color: var(--cyan-bright); }
+  .dim { color: var(--text-dim); }
+  .cyan { color: var(--cyan); }
+  .bright { color: var(--cyan-bright); font-weight: 700; }
+  .error { color: var(--error); }
+  a { color: var(--cyan-bright); }
+  a:hover { color: var(--magenta); }
+
+  table.filelist { border-collapse: collapse; margin: 6px 0; }
+  table.filelist td { padding: 1px 18px 1px 0; color: var(--text); }
+  table.filelist td.type { color: var(--cyan-dim); }
+
+  #input-row {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    padding: 0 20px 16px;
+    flex-shrink: 0;
+  }
+  #input-row .prompt-tag { color: var(--magenta); font-size: 14px; }
+  #cmd-input {
+    flex: 1;
+    background: transparent;
+    border: none;
+    outline: none;
+    color: var(--cyan-bright);
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 14px;
+    caret-color: var(--cyan-bright);
+  }
+
+  #matrix-canvas {
+    position: fixed;
+    inset: 0;
+    z-index: 20;
+    display: none;
+    background: #000;
+  }
+  #matrix-hint {
+    position: fixed;
+    bottom: 14px;
+    left: 50%;
+    transform: translateX(-50%);
+    color: #3f3;
+    font-family: 'JetBrains Mono', monospace;
+    font-size: 12px;
+    z-index: 21;
+    display: none;
+  }
+
+  @media (max-width: 640px) {
+    #crt { padding: 8px; }
+    .ascii { font-size: 8px; }
+  }
+</style>
+</head>
+<body>
+
+<div id="crt">
+  <div id="term-window">
+    <div id="titlebar">
+      <div class="dot r"></div><div class="dot y"></div><div class="dot g"></div>
+      <span>guest@portfolio — 90×30</span>
+    </div>
+    <div id="screen"></div>
+    <div id="input-row">
+      <span class="prompt-tag">guest@portfolio:~$</span>
+      <input id="cmd-input" autocomplete="off" spellcheck="false" autofocus />
+    </div>
+  </div>
+</div>
+
+<canvas id="matrix-canvas"></canvas>
+<div id="matrix-hint">press any key to return</div>
+
+<script>
+// ============ EDIT THIS BLOCK WITH YOUR OWN INFO ============
+const PROFILE = {
+  name: "[YOUR NAME]",
+  role: "[Your Role, e.g. Full-Stack Developer]",
+  location: "[Your City]",
+  bio: [
+    "I build things for the web and enjoy [X, Y, Z].",
+    "Currently [what you're doing now — job, school, project].",
+    "Interested in [your interests / focus areas]."
+  ],
+  skills: {
+    "Languages": ["JavaScript/TypeScript", "Python", "[...]"],
+    "Frontend": ["React", "CSS", "[...]"],
+    "Backend": ["Node.js", "PostgreSQL", "[...]"],
+    "Tools": ["Git", "Docker", "[...]"]
+  },
+  projects: [
+    { name: "project-one", desc: "[One-line description of project one]", url: "https://example.com" },
+    { name: "project-two", desc: "[One-line description of project two]", url: "https://example.com" },
+    { name: "project-three", desc: "[One-line description of project three]", url: "https://example.com" }
+  ],
+  contact: {
+    email: "you@example.com",
+    github: "https://github.com/yourname",
+    linkedin: "https://linkedin.com/in/yourname",
+    twitter: "https://x.com/yourname"
+  },
+  resumeUrl: "https://example.com/resume.pdf"
+};
+// ==============================================================
+
+const screen = document.getElementById("screen");
+const input = document.getElementById("cmd-input");
+const cmdHistory = [];
+let historyIdx = -1;
+
+function esc(s) {
+  return String(s).replace(/&/g, "&amp;").replace(/</g, "&lt;").replace(/>/g, "&gt;");
+}
+
+function printRaw(html) {
+  const div = document.createElement("div");
+  div.className = "line";
+  div.innerHTML = html;
+  screen.appendChild(div);
+  screen.scrollTop = screen.scrollHeight;
+}
+
+function printLine(text, cls) {
+  printRaw(`<span class="${cls || ''}">${esc(text)}</span>`);
+}
+
+async function typeLine(text, cls, speed) {
+  return new Promise((resolve) => {
+    const div = document.createElement("div");
+    div.className = "line";
+    const span = document.createElement("span");
+    if (cls) span.className = cls;
+    div.appendChild(span);
+    screen.appendChild(div);
+    let i = 0;
+    const step = () => {
+      span.textContent = text.slice(0, i);
+      screen.scrollTop = screen.scrollHeight;
+      i++;
+      if (i <= text.length) {
+        setTimeout(step, speed || 12);
+      } else {
+        resolve();
+      }
+    };
+    step();
+  });
+}
+
+const ASCII_LOGO = `
+ ██████╗  ██████╗ ██████╗ ████████╗███████╗ ██████╗ ██╗     ██╗ ██████╗
+ ██╔══██╗██╔═══██╗██╔══██╗╚══██╔══╝██╔════╝██╔═══██╗██║     ██║██╔═══██╗
+ ██████╔╝██║   ██║██████╔╝   ██║   █████╗  ██║   ██║██║     ██║██║   ██║
+ ██╔═══╝ ██║   ██║██╔══██╗   ██║   ██╔══╝  ██║   ██║██║     ██║██║   ██║
+ ██║     ╚██████╔╝██║  ██║   ██║   ██║     ╚██████╔╝███████╗██║╚██████╔╝
+ ╚═╝      ╚═════╝ ╚═╝  ╚═╝   ╚═╝   ╚═╝      ╚═════╝ ╚══════╝╚═╝ ╚═════╝
+`;
+
+const HELP_TEXT = [
+  ["help", "list available commands"],
+  ["about", "who I am"],
+  ["skills", "technical skills"],
+  ["projects", "list of things I've built"],
+  ["ls", "list files in this directory"],
+  ["cat <file>", "print a file, e.g. cat about.txt"],
+  ["contact", "how to reach me"],
+  ["resume", "open my resume"],
+  ["whoami", "guest info"],
+  ["sudo hire-me", "?"],
+  ["clear", "clear the screen"],
+];
+
+const FILES = {
+  "about.txt": () => aboutText(),
+  "skills.txt": () => skillsText(),
+  "projects.txt": () => projectsText(),
+  "contact.txt": () => contactText(),
+};
+
+function aboutText() {
+  let out = `<span class="bright">${esc(PROFILE.name)}</span> <span class="dim">— ${esc(PROFILE.role)}</span>\n`;
+  out += `<span class="dim">based in ${esc(PROFILE.location)}</span>\n\n`;
+  PROFILE.bio.forEach((line) => (out += esc(line) + "\n"));
+  return out;
+}
+
+function skillsText() {
+  let out = "";
+  Object.entries(PROFILE.skills).forEach(([cat, items]) => {
+    out += `<span class="cyan">${esc(cat)}</span>\n  ${items.map(esc).join(", ")}\n\n`;
+  });
+  return out;
+}
+
+function projectsText() {
+  let out = "";
+  PROFILE.projects.forEach((p, i) => {
+    out += `<span class="bright">[${i}]</span> <span class="cyan">${esc(p.name)}</span>\n`;
+    out += `    ${esc(p.desc)}\n`;
+    out += `    <a href="${esc(p.url)}" target="_blank" rel="noopener">${esc(p.url)}</a>\n\n`;
+  });
+  return out;
+}
+
+function contactText() {
+  const c = PROFILE.contact;
+  let out = "";
+  out += `email     <a href="mailto:${esc(c.email)}">${esc(c.email)}</a>\n`;
+  out += `github    <a href="${esc(c.github)}" target="_blank" rel="noopener">${esc(c.github)}</a>\n`;
+  out += `linkedin  <a href="${esc(c.linkedin)}" target="_blank" rel="noopener">${esc(c.linkedin)}</a>\n`;
+  out += `twitter   <a href="${esc(c.twitter)}" target="_blank" rel="noopener">${esc(c.twitter)}</a>\n`;
+  return out;
+}
+
+function ls() {
+  const files = [
+    ["about.txt", "file"],
+    ["skills.txt", "file"],
+    ["projects.txt", "file"],
+    ["contact.txt", "file"],
+    ["resume.pdf", "file"],
+  ];
+  let out = '<table class="filelist">';
+  files.forEach(([name, type]) => {
+    out += `<tr><td class="type">-rw-r--r--</td><td>${esc(name)}</td></tr>`;
+  });
+  out += "</table>";
+  return out;
+}
+
+const COMMANDS = {
+  help() {
+    let out = "Available commands:\n\n";
+    HELP_TEXT.forEach(([cmd, desc]) => {
+      out += `  <span class="cyan">${cmd.padEnd(16)}</span>${esc(desc)}\n`;
+    });
+    printRaw(out.replace(/\n/g, "<br>"));
+  },
+  about() { printRaw(aboutText().replace(/\n/g, "<br>")); },
+  skills() { printRaw(skillsText().replace(/\n/g, "<br>")); },
+  projects() { printRaw(projectsText().replace(/\n/g, "<br>")); },
+  contact() { printRaw(contactText().replace(/\n/g, "<br>")); },
+  ls() { printRaw(ls()); },
+  cat(args) {
+    const fname = args[0];
+    if (!fname) { printLine("usage: cat <file>", "dim"); return; }
+    if (fname === "resume.pdf") {
+      printRaw(`opening <a href="${esc(PROFILE.resumeUrl)}" target="_blank" rel="noopener">${esc(PROFILE.resumeUrl)}</a> ...`);
+      window.open(PROFILE.resumeUrl, "_blank");
+      return;
+    }
+    if (FILES[fname]) {
+      printRaw(FILES[fname]().replace(/\n/g, "<br>"));
+    } else {
+      printLine(`cat: ${fname}: No such file or directory`, "error");
+    }
+  },
+  resume() {
+    printRaw(`opening resume in a new tab...`);
+    window.open(PROFILE.resumeUrl, "_blank");
+  },
+  whoami() {
+    printLine("guest  (uid=1000)  — you found your way into a portfolio", "dim");
+  },
+  clear() { screen.innerHTML = ""; },
+  date() { printLine(new Date().toString(), "dim"); },
+  echo(args) { printLine(args.join(" ")); },
+  pwd() { printLine("/home/guest/portfolio", "dim"); },
+  sudo(args) {
+    if (args.join(" ") === "hire-me") {
+      printLine("Permission granted. Nice instinct.", "bright");
+      printRaw(contactText().replace(/\n/g, "<br>"));
+    } else {
+      printLine("guest is not in the sudoers file. This incident will be reported.", "error");
+    }
+  },
+  matrix() { startMatrix(); },
+  exit() { printLine("nice try — this is a browser tab, not a shell.", "dim"); },
+};
+
+async function handleCommand(raw) {
+  const trimmed = raw.trim();
+  printRaw(`<div class="prompt-line"><span class="prompt-tag">guest@portfolio:~$</span><span class="cmd-echo">${esc(raw)}</span></div>`);
+  if (!trimmed) return;
+  cmdHistory.push(raw);
+  historyIdx = cmdHistory.length;
+
+  const parts = trimmed.split(/\s+/);
+  const cmd = parts[0].toLowerCase();
+  const args = parts.slice(1);
+
+  if (COMMANDS[cmd]) {
+    await COMMANDS[cmd](args);
+  } else {
+    printLine(`command not found: ${cmd} — type 'help' to see what's available`, "error");
+  }
+}
+
+input.addEventListener("keydown", (e) => {
+  if (e.key === "Enter") {
+    const val = input.value;
+    input.value = "";
+    handleCommand(val);
+  } else if (e.key === "ArrowUp") {
+    e.preventDefault();
+    if (historyIdx > 0) { historyIdx--; input.value = cmdHistory[historyIdx] || ""; }
+  } else if (e.key === "ArrowDown") {
+    e.preventDefault();
+    if (historyIdx < cmdHistory.length - 1) { historyIdx++; input.value = cmdHistory[historyIdx] || ""; }
+    else { historyIdx = cmdHistory.length; input.value = ""; }
+  }
+});
+
+document.getElementById("crt").addEventListener("click", () => input.focus());
+
+// ---- Matrix rain easter egg ----
+const matrixCanvas = document.getElementById("matrix-canvas");
+const matrixHint = document.getElementById("matrix-hint");
+let matrixActive = false;
+let matrixAnimId = null;
+
+function startMatrix() {
+  matrixActive = true;
+  matrixCanvas.style.display = "block";
+  matrixHint.style.display = "block";
+  const ctx = matrixCanvas.getContext("2d");
+  matrixCanvas.width = window.innerWidth;
+  matrixCanvas.height = window.innerHeight;
+  const cols = Math.floor(matrixCanvas.width / 16);
+  const drops = new Array(cols).fill(0);
+  const chars = "アイウエオカキクケコサシスセソ01アイウエオ<>[]/;=+*";
+
+  function draw() {
+    if (!matrixActive) return;
+    ctx.fillStyle = "rgba(0,0,0,0.08)";
+    ctx.fillRect(0, 0, matrixCanvas.width, matrixCanvas.height);
+    ctx.fillStyle = "#4dd8e8";
+    ctx.font = "14px monospace";
+    drops.forEach((y, i) => {
+      const text = chars[Math.floor(Math.random() * chars.length)];
+      ctx.fillText(text, i * 16, y);
+      if (y > matrixCanvas.height && Math.random() > 0.975) drops[i] = 0;
+      else drops[i] = y + 16;
+    });
+    matrixAnimId = requestAnimationFrame(draw);
+  }
+  draw();
+
+  const stop = () => {
+    matrixActive = false;
+    matrixCanvas.style.display = "none";
+    matrixHint.style.display = "none";
+    cancelAnimationFrame(matrixAnimId);
+    window.removeEventListener("keydown", stop);
+    window.removeEventListener("click", stop);
+    input.focus();
+  };
+  setTimeout(() => {
+    window.addEventListener("keydown", stop);
+    window.addEventListener("click", stop);
+  }, 300);
+}
+
+// ---- Boot sequence ----
+async function boot() {
+  const bootLines = [
+    "Initializing terminal session...",
+    "Loading kernel modules [ OK ]",
+    "Mounting /home/guest ... [ OK ]",
+    "Starting portfolio.service ... [ OK ]",
+  ];
+  for (const line of bootLines) {
+    await typeLine(line, "dim", 6);
+    await new Promise((r) => setTimeout(r, 120));
+  }
+  printRaw(`<pre class="ascii">${ASCII_LOGO}</pre>`);
+  await typeLine(`Welcome. Type 'help' to get started.`, "cyan", 14);
+  printLine("");
+  input.focus();
+}
+boot();
+</script>
+</body>
+</html>
