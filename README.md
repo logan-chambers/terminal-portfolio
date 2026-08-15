@@ -7,7 +7,7 @@ scrolling a page.
 
 ## Run it
 
-Double-click `index.html`, or open it in any browser.
+https://logan-chambers.github.io/terminal-portfolio/
 
 ## Commands
 
